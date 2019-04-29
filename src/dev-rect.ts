@@ -1,83 +1,84 @@
 import * as p5 from 'p5';
+import {colorAtRandom} from "./util";
 
+let p: p5;
 
-export class DevRect {
-    numA: number;
-    numB: number;
-    ratio: number;
+export const createDevRect = (_p: p5, numA: number, numB: number, scalar: number) => {
+    p = _p;
+    return new DevRect(numA, numB, scalar);
+};
 
-    constructor(p: p5, numA: number, numB: number, scalar: number) {
-        this.p = p;
-        this.numA = numA;
-        this.numB = numB;
-        this.ratio = numB / numA;
+class DevRectItr {
+    wd: number;
+    itr: number;
+    xPos: number;
+    yPos: number;
 
-        this.drawSqure();
+    constructor(private numA: number, private numB: number) {
+        this.wd = this.numB;
+        this.itr = 1;
+        this.xPos = 0;
+        this.yPos = 0;
     }
 
-    drawSqure() {
-        let itr = 0;
-        let xPos = 0;
-        let yPos = 0;
-        let wd = this.p.width * this.ratio;
+    hasNext() {
+        return this.wd > 0;
+    }
 
-        this.p.mouseClicked = () => {
-            this.numA = Math.floor(this.p.random(1, 20));
-            this.numB = Math.floor(this.p.random(1, 20));
-            console.log("NumA: " + this.numA);
-            console.log("NumB: " + this.numB);
-            this.ratio = this.numB / this.numA;
-            this.p.background(0, 0, 1);
-            this.drawSqure();
-        };
+    step(color: p5.Color) {
+        if (!this.hasNext()) {
+            return;
+        }
 
-        this.p.colorMode(this.p.HSB, 1);
-        this.divSquare(0, 0, this.p.width);
-
-        while (wd > 0.1) {
-            itr++;
-            if (itr % 2 == 1) {
-                while (xPos + wd <= this.p.width + 0.1) {
-                    this.divSquare(xPos, yPos, wd);
-                    xPos += wd;
-                }
-                wd = this.p.width - xPos;
-            } else {
-                while (yPos + wd <= this.p.width * this.ratio + 0.1) {
-                    this.divSquare(xPos, yPos, wd);
-                    yPos += wd;
-                }
-                wd = this.p.width * this.ratio - yPos;
+        if (this.itr % 2 == 1) {
+            if (this.xPos + this.wd <= this.numA) {
+                p.fill(color);
+                p.rect(this.xPos, this.yPos, this.wd, this.wd);
+                this.xPos += this.wd;
+            }
+            if (this.xPos + this.wd > this.numA) {
+                this.wd = this.numA - this.xPos;
+                this.itr++;
+            }
+        } else {
+            if (this.yPos + this.wd <= this.numB) {
+                p.fill(color);
+                p.rect(this.xPos, this.yPos, this.wd, this.wd);
+                this.yPos += this.wd;
+            }
+            if (this.yPos + this.wd > this.numB) {
+                this.wd = this.numB - this.yPos;
+                this.itr++;
             }
         }
-    }
-
-    divSquare(xPos: number, yPos:number, wd:number) {
-        let itr = 0;
-        let xEndPos = wd + xPos;
-        let yEndPos = wd + yPos;
-
-        while (wd > 0.1) {
-            itr++;
-            if (itr % 2 == 1) {
-                while (xPos + wd * this.ratio < xEndPos + 0.1) {
-                    this.p.fill(this.p.color(this.p.random(1), 1, 1));
-                    this.p.rect(xPos, yPos, wd * this.ratio, wd);
-                    xPos += wd * this.ratio;
-                }
-                wd = xEndPos - xPos;
-            } else {
-                while (yPos + wd / this.ratio < yEndPos + 0.1) {
-                    this.p.fill(this.p.color(this.p.random(1), 1, 1));
-                    this.p.rect(xPos, yPos, wd, wd / this.ratio);
-                    yPos += wd / this.ratio;
-                }
-                wd = yEndPos - yPos;
-            }
-        }
-    }
-
-    draw() {
     }
 }
-};
+
+export class DevRect {
+    itr: DevRectItr;
+
+    constructor(private readonly numA: number, private readonly numB: number, scalar: number) {
+        this.numA = numA * scalar;
+        this.numB = numB * scalar;
+        this.initItr();
+    }
+
+    stepDraw(color: p5.Color) {
+        this.itr.step(color);
+    }
+
+    initItr() {
+        this.itr = new DevRectItr(this.numA, this.numB);
+    }
+
+    hasNext() {
+        return this.itr.hasNext();
+    }
+
+    drawAtRandomColor() {
+        p.colorMode(p.HSB, 1);
+        while (this.itr.hasNext()) {
+            this.itr.step(colorAtRandom(p));
+        }
+    }
+}
