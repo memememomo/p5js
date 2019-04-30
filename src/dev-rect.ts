@@ -1,20 +1,43 @@
 import * as p5 from 'p5';
 import {colorAtRandom} from "./util";
+import {DevSquare} from "./dev-square";
 
 let p: p5;
 
+
 export const createDevRect = (_p: p5, numA: number, numB: number, scalar: number) => {
     p = _p;
-    return new DevRect(numA, numB, scalar);
+    return new DevRect(numA, numB, scalar, drawerRect);
 };
 
-class DevRectItr {
+export const createDevRectRecursive = (_p: p5, numA: number, numB: number, scalar: number) => {
+    p = _p;
+    return new DevRect(numA, numB, scalar, drawerRecursive)
+};
+
+type drawer = (x:number, y:number, w:number, h:number, col:p5.Color, wd:number, ratio:number) => void;
+
+const drawerRect = (x:number, y:number, w:number, h:number, col:p5.Color, wd:number, ratio:number) => {
+    p.fill(col);
+    p.rect(x, y, w, h);
+};
+
+const drawerRecursive = (x:number, y:number, w:number, h:number, col:p5.Color, wd:number, ratio:number) => {
+    const ds = new DevSquare(x, y, w, w, ratio, drawerRect);
+    while (ds.hasNext()) {
+       ds.step(colorAtRandom(p));
+    }
+};
+
+class DevRect {
     wd: number;
     itr: number;
     xPos: number;
     yPos: number;
 
-    constructor(private numA: number, private numB: number) {
+    constructor(private numA: number, private numB: number, private scalar: number, private drawer: drawer) {
+        this.numA *= this.scalar;
+        this.numB *= this.scalar;
         this.wd = this.numB;
         this.itr = 1;
         this.xPos = 0;
@@ -32,8 +55,7 @@ class DevRectItr {
 
         if (this.itr % 2 == 1) {
             if (this.xPos + this.wd <= this.numA) {
-                p.fill(color);
-                p.rect(this.xPos, this.yPos, this.wd, this.wd);
+                this.drawer(this.xPos, this.yPos, this.wd, this.wd, color, this.wd, this.numB/this.numA);
                 this.xPos += this.wd;
             }
             if (this.xPos + this.wd > this.numA) {
@@ -42,8 +64,7 @@ class DevRectItr {
             }
         } else {
             if (this.yPos + this.wd <= this.numB) {
-                p.fill(color);
-                p.rect(this.xPos, this.yPos, this.wd, this.wd);
+                this.drawer(this.xPos, this.yPos, this.wd, this.wd, color, this.wd, this.numB/this.numA);
                 this.yPos += this.wd;
             }
             if (this.yPos + this.wd > this.numB) {
@@ -54,31 +75,3 @@ class DevRectItr {
     }
 }
 
-export class DevRect {
-    itr: DevRectItr;
-
-    constructor(private readonly numA: number, private readonly numB: number, scalar: number) {
-        this.numA = numA * scalar;
-        this.numB = numB * scalar;
-        this.initItr();
-    }
-
-    stepDraw(color: p5.Color) {
-        this.itr.step(color);
-    }
-
-    initItr() {
-        this.itr = new DevRectItr(this.numA, this.numB);
-    }
-
-    hasNext() {
-        return this.itr.hasNext();
-    }
-
-    drawAtRandomColor() {
-        p.colorMode(p.HSB, 1);
-        while (this.itr.hasNext()) {
-            this.itr.step(colorAtRandom(p));
-        }
-    }
-}
